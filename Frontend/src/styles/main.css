@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+body {
+  background: #0b1220;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+.pharma-card {
+  background: #0f1729;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+}
+
+.pharma-btn {
+  background: #2b7cff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: bold;
+  transition: 0.2s;
+}
+
+.pharma-btn:hover {
+  background: #1a5dcc;
+}
