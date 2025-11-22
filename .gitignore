@@ -1,0 +1,28 @@
+# Python
+venv/
+__pycache__/
+
+# Node
+node_modules/
+Frontend/node_modules/
+Backend/backend/node_modules/
+
+# Environment
+.env
+
+# Logs
+*.log
+
+# Local Blockchain test folder (NOT needed)
+Blockchain/
+
+# QR images
+Backend/backend/static/qr_codes/
+
+# Build
+dist/
+build/
+
+# Misc
+*.pyc
+*.pyo
