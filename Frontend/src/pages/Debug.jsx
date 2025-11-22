@@ -34,6 +34,9 @@ export default function DebugMedicines() {
           {Object.keys(data).map((batchId) => {
             const item = data[batchId];
 
+            // FIX — Define filename properly
+            const fileName = item.qr_code_path || "";
+
             return (
               <div
                 key={batchId}
@@ -60,24 +63,20 @@ export default function DebugMedicines() {
                   />
 
                   <DebugField label="Created TX" value={item.create_tx} />
-                  <DebugField
-                    label="Ship TX"
-                    value={item.ship_tx || "Not shipped yet"}
-                  />
-                  <DebugField
-                    label="Receive TX"
-                    value={item.receive_tx || "Not received yet"}
-                  />
+                  <DebugField label="Ship TX" value={item.ship_tx || "Not shipped yet"} />
+                  <DebugField label="Receive TX" value={item.receive_tx || "Not received yet"} />
                 </div>
 
                 {/* QR Code */}
-                <div className="mt-5">
-                  <img
-                    src={`http://127.0.0.1:5000/static/qr_codes/${item.qr_code_path}`}
-                    alt="QR"
-                    className="w-32 h-32 border border-slate-700 rounded bg-black"
-                  />
-                </div>
+                {fileName && (
+                  <div className="mt-5">
+                    <img
+                      src={`https://pharma-suplychain-verification.onrender.com/static/qr_codes/${fileName}`}
+                      alt="QR"
+                      className="w-32 h-32 border border-slate-700 rounded bg-black"
+                    />
+                  </div>
+                )}
 
                 {/* JSON COPY */}
                 <div className="relative mt-4">

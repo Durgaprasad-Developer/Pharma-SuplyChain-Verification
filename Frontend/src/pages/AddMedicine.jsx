@@ -24,6 +24,7 @@ export default function AddMedicine() {
   });
 
   const [response, setResponse] = useState(null);
+  const fileName = response?.qr_code_path || "";
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -192,7 +193,7 @@ export default function AddMedicine() {
             {response.qr_code_path && (
               <div>
                 <img
-                  src={`http://127.0.0.1:5000/static/qr_codes/${response.qr_code_path}`}
+                  src={`https://pharma-suplychain-verification.onrender.com/static/qr_codes/${fileName}`}
                   alt="QR"
                   className="w-40 h-40 rounded-lg border border-slate-600"
                 />
@@ -207,6 +208,7 @@ export default function AddMedicine() {
                 </div>
               </div>
             )}
+            
 
             {/* RESPONSE JSON */}
             <div className="flex-1 relative">

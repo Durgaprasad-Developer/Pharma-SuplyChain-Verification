@@ -19,7 +19,6 @@ export default function AuditTrail() {
       }
 
       setInfo(res.data[batch]);
-
     } catch (err) {
       setError("Server error: " + err.message);
     }
@@ -70,18 +69,18 @@ export default function AuditTrail() {
 
           <AuditField label="Created TX" value={info.create_tx} />
           <AuditField label="Shipped TX" value={info.ship_tx || "Not shipped"} />
-          <AuditField
-            label="Received TX"
-            value={info.receive_tx || "Not received"}
-          />
+          <AuditField label="Received TX" value={info.receive_tx || "Not received"} />
 
-          <div className="mt-4">
-            <img
-              src={`http://127.0.0.1:5000/static/qr_codes/${info.qr_code_path}`}
-              alt="QR"
-              className="w-32 h-32 border border-slate-700 rounded"
-            />
-          </div>
+          {/* FIX — QR CODE */}
+          {info.qr_code_path && (
+            <div className="mt-4">
+              <img
+                src={`https://pharma-suplychain-verification.onrender.com/static/qr_codes/${info.qr_code_path}`}
+                alt="QR"
+                className="w-32 h-32 border border-slate-700 rounded"
+              />
+            </div>
+          )}
 
           <pre className="bg-black/40 p-4 rounded mt-4 overflow-x-auto text-green-400">
             {JSON.stringify(info, null, 2)}
