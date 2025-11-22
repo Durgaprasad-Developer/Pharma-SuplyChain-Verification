@@ -31,6 +31,12 @@ medicine_records = {}
 # --------------------------
 # SERVE QR CODE IMAGES
 # --------------------------
+
+@app.route("/python-version")
+def python_version():
+    import sys
+    return {"python": sys.version}
+ 
 @app.route('/static/qr_codes/<path:filename>')
 def serve_qr(filename):
     return send_from_directory("static/qr_codes", filename)
