@@ -1,15 +1,16 @@
+// top of file
 import React, { useState } from "react";
 import api from "../api/axios";
 
-import { 
-  FiHash, 
-  FiPackage, 
-  FiUser, 
-  FiCalendar, 
-  FiKey, 
-  FiTruck 
+import {
+  FiHash,
+  FiPackage,
+  FiUser,
+  FiCalendar,
+  FiKey,
+  FiTruck,
+  FiDownload
 } from "react-icons/fi";
-
 
 export default function AddMedicine() {
   const [form, setForm] = useState({
@@ -41,15 +42,28 @@ export default function AddMedicine() {
         manufacture_date: convertToTimestamp(form.manufacture_date),
         expiry_date: convertToTimestamp(form.expiry_date),
         scratch_card_no: form.scratch_card_no,
-        distributor: form.distributor || "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+        distributor:
+          form.distributor ||
+          "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
       };
 
       const res = await api.post("/medicines", payload);
       setResponse(res.data);
-
     } catch (err) {
       setResponse({ error: err.response?.data || err.message });
     }
+  };
+
+  const downloadQR = () => {
+    if (!response?.qr_code_path) return;
+
+    const fileName = response.qr_code_path;
+    const url = `http://127.0.0.1:5000/static/qr_codes/${fileName}`;
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
   };
 
   // Input Block Component
@@ -62,7 +76,6 @@ export default function AddMedicine() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 text-white">
-
       {/* HEADING */}
       <h2 className="text-3xl font-bold mb-8 flex items-center gap-2">
         <FiPackage className="text-blue-400" size={28} />
@@ -71,7 +84,6 @@ export default function AddMedicine() {
 
       {/* FORM */}
       <div className="space-y-5">
-
         <InputBlock icon={<FiHash size={20} className="text-blue-400" />}>
           <input
             type="text"
@@ -157,50 +169,65 @@ export default function AddMedicine() {
       </div>
 
       {/* RESPONSE BLOCK */}
-      {/* SUCCESS DISPLAY */}
-{response && (
-  <div className="mt-6 bg-[#0d1117] p-6 rounded-xl border border-slate-700">
-    <h3 className="text-green-400 text-xl font-semibold mb-3">
-      Batch Created Successfully
-    </h3>
+      {response && (
+        <div className="mt-6 bg-[#0b1220] p-6 rounded-xl border border-slate-700">
+          <h3 className="text-green-400 text-xl font-semibold mb-3">
+            Batch Created Successfully
+          </h3>
 
-    {/* BLOCKCHAIN TX */}
-    <p className="text-slate-300 text-sm mb-2">
-      <span className="font-semibold text-blue-400">Blockchain TX:</span>
-      <a
-        href="#"
-        className="ml-2 text-blue-500 underline break-all"
-      >
-        {response.blockchain_tx}
-      </a>
-    </p>
+          <p className="text-slate-300 text-sm mb-2">
+            <span className="font-semibold text-blue-400">Blockchain TX:</span>{" "}
+            <a
+              className="ml-2 text-blue-500 underline break-all"
+              target="_blank"
+              rel="noreferrer"
+              href="#"
+            >
+              {response.blockchain_tx || response.create_tx}
+            </a>
+          </p>
 
-    {/* QR CODE */}
-    <div className="mt-4">
-      <img
-        src={`http://127.0.0.1:5000/${response.qr_code_path}`}
-        alt="QR Code"
-        className="w-40 h-40 rounded-lg border border-slate-600"
-      />
-    </div>
+          <div className="mt-4 flex items-start gap-6">
+            {/* QR BLOCK */}
+            {response.qr_code_path && (
+              <div>
+                <img
+                  src={`http://127.0.0.1:5000/static/qr_codes/${response.qr_code_path}`}
+                  alt="QR"
+                  className="w-40 h-40 rounded-lg border border-slate-600"
+                />
 
-    {/* FORMATTED JSON */}
-    <div className="relative mt-6">
-      <button
-        onClick={() => navigator.clipboard.writeText(JSON.stringify(response, null, 2))}
-        className="absolute right-3 top-3 px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded"
-      >
-        Copy
-      </button>
+                <div className="mt-2">
+                  <button
+                    onClick={downloadQR}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 rounded text-white"
+                  >
+                    <FiDownload /> Download QR
+                  </button>
+                </div>
+              </div>
+            )}
 
-      <pre className="bg-[#0a0f18] text-green-300 p-4 rounded-lg overflow-x-auto text-sm border border-slate-800">
-{JSON.stringify(response, null, 2)}
-      </pre>
-    </div>
-  </div>
-)}
+            {/* RESPONSE JSON */}
+            <div className="flex-1 relative">
+              <button
+                onClick={() =>
+                  navigator.clipboard.writeText(
+                    JSON.stringify(response, null, 2)
+                  )
+                }
+                className="absolute right-3 top-3 px-3 py-1 text-xs bg-blue-600 rounded text-white"
+              >
+                Copy
+              </button>
 
-
+              <pre className="bg-[#060913] text-green-300 p-4 rounded-lg overflow-x-auto text-sm border border-slate-800">
+                {JSON.stringify(response, null, 2)}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

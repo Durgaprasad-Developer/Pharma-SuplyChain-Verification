@@ -1,120 +1,116 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import api from "../api/axios";
-import { FaSearch, FaBarcode } from "react-icons/fa";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 export default function Verify() {
-  const [batchId, setBatchId] = useState("");
+  const [batch, setBatch] = useState("");
   const [scratch, setScratch] = useState("");
   const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const STATE_MAP = {
-  0: "Created",
-  1: "Shipped",
-  2: "Received",
-  3: "Sold"
-};
 
+  const scannerRef = useRef(null);
+  const [scanning, setScanning] = useState(false);
 
-  const verify = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  useEffect(() => {
+    if (scanning) {
+      const scanner = new Html5QrcodeScanner(
+        "qr-scanner",
+        { fps: 10, qrbox: 250 },
+        false
+      );
 
-    try {
-      const res = await api.post("/medicines/verify", {
-        batch_no: batchId,
-        scratch_card_no: scratch
-      });
+      scanner.render(
+        (decodedText) => {
+          try {
+            const parsed = JSON.parse(decodedText);
+            setBatch(parsed.batch_no || parsed.batchId || "");
+            setScratch(parsed.scratch_card_no || "");
+          } catch {
+            setBatch(decodedText);
+          }
 
-      setResult(res.data);
-    } catch (err) {
-      console.error(err);
-      alert("Verification failed");
+          scanner.clear();
+          setScanning(false);
+        },
+        (err) => {
+          console.log("Scan error:", err);
+        }
+      );
+
+      scannerRef.current = scanner;
     }
 
-    setLoading(false);
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear();
+      }
+    };
+  }, [scanning]);
+
+  const handleVerify = async () => {
+    setResult(null);
+    try {
+      const res = await api.post("/medicines/verify", {
+        batch_no: batch,
+        scratch_card_no: scratch
+      });
+      setResult(res.data);
+    } catch (err) {
+      setResult({ error: err.response?.data || err.message });
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0f14] p-6 text-white">
-      <div className="max-w-2xl mx-auto mt-10 bg-[#0b1220] p-8 rounded-2xl border border-slate-700 shadow-xl">
+    <div className="max-w-3xl mx-auto p-6 text-white">
+      <h2 className="text-3xl font-bold mb-6">Verify Medicine</h2>
 
-        <h1 className="text-3xl font-semibold mb-6 flex items-center gap-2">
-          <FaSearch className="text-blue-400" />
-          Verify Medicine
-        </h1>
+      <div className="space-y-4">
 
-        <form onSubmit={verify} className="space-y-5">
+        {/* Batch Number */}
+        <div>
+          <label className="text-sm text-slate-300">Batch Number</label>
+          <input
+            className="w-full p-3 bg-[#0f172a] rounded border border-slate-600"
+            value={batch}
+            onChange={(e) => setBatch(e.target.value)}
+            placeholder="Enter or Scan QR"
+          />
+        </div>
 
-          <div>
-            <label className="text-slate-300">Batch Number</label>
-            <div className="flex items-center bg-[#0f1724] p-3 rounded-lg mt-1 border border-slate-700">
-              <FaBarcode className="text-blue-400 mr-3" />
-              <input
-                type="text"
-                className="bg-transparent w-full outline-none"
-                placeholder="Enter batch number"
-                value={batchId}
-                onChange={(e) => setBatchId(e.target.value)}
-                required
-              />
-            </div>
-          </div>
+        {/* Scratch */}
+        <div>
+          <label className="text-sm text-slate-300">Scratch Card</label>
+          <input
+            className="w-full p-3 bg-[#0f172a] rounded border border-slate-600"
+            value={scratch}
+            onChange={(e) => setScratch(e.target.value)}
+            placeholder="Scratch Code"
+          />
+        </div>
 
-          <div>
-            <label className="text-slate-300">Scratch Card Number</label>
-            <input
-              type="text"
-              className="w-full bg-[#0f1724] p-3 rounded-lg mt-1 border border-slate-700 outline-none"
-              placeholder="Enter scratch number"
-              value={scratch}
-              onChange={(e) => setScratch(e.target.value)}
-              required
-            />
-          </div>
+        {/* Scanner Button */}
+        <button
+          onClick={() => setScanning(true)}
+          className="px-4 py-2 bg-blue-600 rounded"
+        >
+          Scan QR Code
+        </button>
 
-          <button
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl text-lg font-semibold"
-            disabled={loading}
-          >
-            {loading ? "Verifying..." : "Verify Medicine"}
-          </button>
-        </form>
+        {/* Scanner UI */}
+        {scanning && <div id="qr-scanner" className="mt-4" />}
 
-        {/* Verification Results */}
+        {/* Verify Button */}
+        <button
+          onClick={handleVerify}
+          className="px-4 py-2 bg-green-600 rounded"
+        >
+          Verify
+        </button>
+
+        {/* Result */}
         {result && (
-          <div className="mt-8 bg-[#071028] p-5 rounded-xl border border-slate-700">
-            <h2 className="text-xl font-semibold text-green-400">
-              Verification Completed
-            </h2>
-
-            <p className="mt-3 text-slate-300">
-              <strong>Scratch Match:</strong>{" "}
-              {result.scratch_card_match ? (
-                <span className="text-green-400">Valid</span>
-              ) : (
-                <span className="text-red-400">Invalid</span>
-              )}
-            </p>
-
-            <p className="mt-2 text-slate-300">
-              <strong>Digital Signature:</strong>{" "}
-              {result.digital_signature_valid ? (
-                <span className="text-green-400">Authentic</span>
-              ) : (
-                <span className="text-red-400">Tampered</span>
-              )}
-            </p>
-
-            {result.onchain && (
-              <p className="mt-2 text-slate-300">
-                <p>
-  <strong>Current State:</strong>{" "}
-  {STATE_MAP[result.onchain?.state] || "Unknown"}
-</p>
-
-              </p>
-            )}
-          </div>
+          <pre className="bg-[#06101f] text-green-300 p-4 mt-4 rounded border border-slate-700 overflow-auto">
+            {JSON.stringify(result, null, 2)}
+          </pre>
         )}
 
       </div>

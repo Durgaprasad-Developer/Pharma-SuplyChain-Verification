@@ -1,0 +1,274 @@
+{
+  "address": "0xe1E0baB5eF4B912865232a9801680550D80F72aa",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "batchId",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "drug",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "manufacturer",
+          "type": "address"
+        }
+      ],
+      "name": "BatchCreated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "batchId",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "pharmacy",
+          "type": "address"
+        }
+      ],
+      "name": "Received",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "batchId",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "distributor",
+          "type": "address"
+        }
+      ],
+      "name": "Shipped",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "batchId",
+          "type": "string"
+        }
+      ],
+      "name": "Sold",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "name": "batches",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "drugName",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "batchId",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "mfgDate",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "expDate",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "manufacturer",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "distributor",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "pharmacy",
+          "type": "address"
+        },
+        {
+          "internalType": "enum SupplyChain.State",
+          "name": "state",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "batchId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "drugName",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "mfgDate",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "expDate",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "distributor",
+          "type": "address"
+        }
+      ],
+      "name": "createBatch",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "batchId",
+          "type": "string"
+        }
+      ],
+      "name": "getBatch",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "drugName",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "batchId",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "mfgDate",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "expDate",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "manufacturer",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "distributor",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "pharmacy",
+              "type": "address"
+            },
+            {
+              "internalType": "enum SupplyChain.State",
+              "name": "state",
+              "type": "uint8"
+            }
+          ],
+          "internalType": "struct SupplyChain.Batch",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "batchId",
+          "type": "string"
+        }
+      ],
+      "name": "markSold",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "batchId",
+          "type": "string"
+        },
+        {
+          "internalType": "address",
+          "name": "pharmacy",
+          "type": "address"
+        }
+      ],
+      "name": "receiveAtPharmacy",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "batchId",
+          "type": "string"
+        }
+      ],
+      "name": "ship",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "deployTx": "0x874f04dfe63145e5156e310b0f8c120e9802d25810b39099aecc722c2316eddf"
+}

@@ -1,10 +1,10 @@
 # app.py
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from datetime import datetime
 import os
 
-# Local modules (these must exist in the same folder)
+# Local modules
 from digital_signature import DigitalSignatureManager
 from qrcode_gen import QRCodeGenerator
 from blockchain import PharmaBlockchain
@@ -25,28 +25,33 @@ signature_manager = DigitalSignatureManager()
 qr_generator = QRCodeGenerator()
 blockchain = PharmaBlockchain()
 
-# In-memory "database"
+# In-memory DB
 medicine_records = {}
+
+# --------------------------
+# SERVE QR CODE IMAGES
+# --------------------------
+@app.route('/static/qr_codes/<path:filename>')
+def serve_qr(filename):
+    return send_from_directory("static/qr_codes", filename)
 
 # --------------------------
 # HELPERS
 # --------------------------
 def parse_onchain_batch(raw):
-    """Convert blockchain tuple into a clean dict."""
     if not raw:
         return None
 
-    # ABI may return tuple/list-like or dict-like depending on web3 version.
     if isinstance(raw, (list, tuple)) and len(raw) >= 8:
         return {
             "drugName": raw[0],
             "batchId": raw[1],
-            "mfgDate": int(raw[2]) if raw[2] is not None else 0,
-            "expDate": int(raw[3]) if raw[3] is not None else 0,
+            "mfgDate": int(raw[2] or 0),
+            "expDate": int(raw[3] or 0),
             "manufacturer": raw[4],
             "distributor": raw[5],
             "pharmacy": raw[6],
-            "state": int(raw[7]) if raw[7] is not None else 0
+            "state": int(raw[7] or 0)
         }
 
     if isinstance(raw, dict):
@@ -63,14 +68,17 @@ def parse_onchain_batch(raw):
 
     return None
 
+
 # --------------------------
 # ROUTES
 # --------------------------
+
 @app.route("/")
 def home():
-    return jsonify({"message": "Pharma Supply Chain API Ready", "version": "1.0"})
+    return jsonify({"message": "Pharma Supply Chain API Ready"})
 
-@app.route("/api/health", methods=["GET"])
+
+@app.route("/api/health")
 def health():
     return jsonify({
         "status": "healthy",
@@ -78,24 +86,28 @@ def health():
         "timestamp": datetime.now().isoformat()
     })
 
-# -----------------------------------------------------
+
+# ---------------------------------------------------------
 # 1. ADD MEDICINE
-# -----------------------------------------------------
+# ---------------------------------------------------------
 @app.route("/api/medicines", methods=["POST"])
 def add_medicine():
     try:
         data = request.get_json(force=True)
-        required = ["batch_no", "name", "manufacturer", "manufacture_date", "expiry_date", "scratch_card_no"]
+
+        required = [
+            "batch_no", "name", "manufacturer",
+            "manufacture_date", "expiry_date", "scratch_card_no"
+        ]
         for f in required:
             if f not in data:
                 return jsonify({"success": False, "error": f"Missing field: {f}"}), 400
 
         batch_no = data["batch_no"]
+
         if batch_no in medicine_records:
             return jsonify({"success": False, "error": "Batch already exists"}), 400
 
-        # manufacture_date & expiry_date expected as timestamps (int). If frontend sends YYYY-MM-DD convert there.
-        # Here we accept numeric timestamps; frontend must convert before sending.
         medicine_data = {
             "batch_no": batch_no,
             "name": data["name"],
@@ -103,15 +115,16 @@ def add_medicine():
             "manufacture_date": int(data["manufacture_date"]),
             "expiry_date": int(data["expiry_date"]),
             "current_owner": data["manufacturer"],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
-        # Sign the record
+        # 🔐 Digital Signature
         digital_signature = signature_manager.sign_medicine_data(medicine_data)
 
-        # Create the batch on-chain
+        # 🔗 Blockchain createBatch
         distributor_addr = data.get("distributor", blockchain.account)
-        tx_hash, receipt = blockchain.create_batch(
+
+        tx_hash = blockchain.create_batch(
             batchId=batch_no,
             drug=medicine_data["name"],
             mfg=medicine_data["manufacture_date"],
@@ -119,10 +132,15 @@ def add_medicine():
             distributor=distributor_addr
         )
 
-        # Generate QR code (saves file and returns path,text)
-        qr_path, qr_text = qr_generator.generate_medicine_qr(medicine_data, digital_signature)
+        # 🧾 Generate QR
+        qr_full_path, qr_text = qr_generator.generate_medicine_qr(
+            medicine_data,
+            digital_signature
+        )
 
-        # Save locally (in-memory). Add transaction audit fields
+        qr_filename = os.path.basename(qr_full_path)
+
+        # Save in local DB
         medicine_records[batch_no] = {
             **medicine_data,
             "digital_signature": digital_signature,
@@ -131,7 +149,7 @@ def add_medicine():
             "ship_tx": None,
             "receive_tx": None,
             "sold_tx": None,
-            "qr_code_path": qr_path
+            "qr_code_path": qr_filename
         }
 
         return jsonify({
@@ -139,16 +157,18 @@ def add_medicine():
             "message": "Medicine added successfully",
             "batch_no": batch_no,
             "digital_signature": digital_signature,
-            "qr_code_path": qr_path,
+            "qr_code_path": qr_filename,
             "blockchain_tx": tx_hash
         }), 201
 
     except Exception as e:
+        print("❌ Add Medicine Error:", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
-# -----------------------------------------------------
+
+# ---------------------------------------------------------
 # 2. VERIFY MEDICINE
-# -----------------------------------------------------
+# ---------------------------------------------------------
 @app.route("/api/medicines/verify", methods=["POST"])
 def verify_medicine():
     try:
@@ -157,18 +177,18 @@ def verify_medicine():
         scratch = data.get("scratch_card_no")
 
         if not batch_no or not scratch:
-            return jsonify({"success": False, "error": "batch_no and scratch_card_no required"}), 400
+            return jsonify({"success": False, "error": "Missing fields"}), 400
 
-        # Query on-chain
+        local = medicine_records.get(batch_no)
+        local_exists = local is not None
+
+        # Try blockchain fetch
         try:
             raw_onchain = blockchain.get_batch(batch_no)
             onchain = parse_onchain_batch(raw_onchain)
-        except Exception:
+        except:
             onchain = None
 
-        # Local check
-        local = medicine_records.get(batch_no)
-        local_exists = local is not None
         signature_ok = False
         scratch_ok = False
 
@@ -185,61 +205,65 @@ def verify_medicine():
                 },
                 local["digital_signature"]
             )
+
             scratch_ok = (local["scratch_card_no"] == scratch)
 
         return jsonify({
             "success": True,
             "batch_no": batch_no,
-            "onchain": onchain,
             "local_record_exists": local_exists,
             "digital_signature_valid": signature_ok,
             "scratch_card_match": scratch_ok,
+            "onchain": onchain,
             "verified_at": datetime.now().isoformat()
         })
 
     except Exception as e:
+        print("❌ Verify Error:", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
-# -----------------------------------------------------
-# 3. TRANSFER MEDICINE (ship -> receive)
-# -----------------------------------------------------
+
+# ---------------------------------------------------------
+# 3. TRANSFER MEDICINE
+# ---------------------------------------------------------
 @app.route("/api/medicines/transfer", methods=["POST"])
 def transfer_medicine():
     try:
         data = request.get_json(force=True)
+
         batch_no = data.get("batch_no")
         to_owner = data.get("to_owner")
         scratch = data.get("scratch_card_no")
 
         if not all([batch_no, to_owner, scratch]):
-            return jsonify({"success": False, "error": "batch_no, to_owner, scratch_card_no required"}), 400
+            return jsonify({"success": False, "error": "Missing fields"}), 400
 
         local = medicine_records.get(batch_no)
         if not local:
             return jsonify({"success": False, "error": "Batch not found"}), 404
 
         if local["scratch_card_no"] != scratch:
-            return jsonify({"success": False, "error": "Scratch card mismatch"}), 400
+            return jsonify({"success": False, "error": "Scratch mismatch"}), 400
 
         original_owner = local["current_owner"]
 
-        # Sign the transfer data
         transfer_data = {
             "batch_no": batch_no,
             "from_owner": original_owner,
             "to_owner": to_owner,
             "timestamp": datetime.now().isoformat()
         }
+
         transfer_signature = signature_manager.sign_medicine_data(transfer_data)
 
-        # Call blockchain ship() then receiveAtPharmacy()
+        # Blockchain calls
         try:
-            tx1_hash, _ = blockchain.ship(batch_no)
-            tx2_hash, _ = blockchain.receive_at_pharmacy(batch_no, blockchain.account)
+            tx1_hash = blockchain.ship(batch_no)
+            tx2_hash = blockchain.receive_at_pharmacy(batch_no, blockchain.account)
         except Exception as e:
-            return jsonify({"success": False, "error": f"Blockchain transfer failed: {e}"}), 500
+            return jsonify({"success": False, "error": str(e)}), 500
 
-        # Update local owner only after chain success
+        # Update DB
         local["current_owner"] = to_owner
         local["ship_tx"] = tx1_hash
         local["receive_tx"] = tx2_hash
@@ -256,14 +280,17 @@ def transfer_medicine():
         })
 
     except Exception as e:
+        print("❌ Transfer Error:", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
-# -----------------------------------------------------
+
+# ---------------------------------------------------------
 # 4. DEBUG
-# -----------------------------------------------------
-@app.route("/api/debug/medicines", methods=["GET"])
+# ---------------------------------------------------------
+@app.route("/api/debug/medicines")
 def debug_medicines():
     return jsonify(medicine_records)
+
 
 # --------------------------
 # RUN SERVER
@@ -271,5 +298,6 @@ def debug_medicines():
 if __name__ == "__main__":
     os.makedirs("static/qr_codes", exist_ok=True)
     os.makedirs("keys", exist_ok=True)
-    print("🔗 Pharma Backend Running on http://127.0.0.1:5000")
+
+    print("🔗 Pharma Backend Running at http://127.0.0.1:5000")
     app.run(host="127.0.0.1", port=5000, debug=True)
